@@ -3,7 +3,7 @@
 {% block title %}{{ note.title }} - Notes Hub{% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto space-y-6">
+<div class="max-w-4xl mx-auto space-y-6" x-data="noteDetailView()">
 
     <!-- Top Navigation & Action Buttons -->
     <div class="flex items-center justify-between">
@@ -14,14 +14,14 @@
             <span>Back to Notes</span>
         </a>
 
-        <div class="flex items-center space-x-3">
-            <a href="{% url 'note_edit' note.pk %}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition flex items-center space-x-1">
+        <div class="flex items-center space-x-2 sm:space-x-3">
+            <a href="{% url 'note_edit' note.pk %}" class="px-3 sm:px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs sm:text-sm font-medium rounded-lg transition flex items-center space-x-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                 </svg>
                 <span>Edit</span>
             </a>
-            <a href="{% url 'note_delete' note.pk %}" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium rounded-lg transition flex items-center space-x-1">
+            <a href="{% url 'note_delete' note.pk %}" class="px-3 sm:px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-xs sm:text-sm font-medium rounded-lg transition flex items-center space-x-1">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
                 </svg>
@@ -31,84 +31,341 @@
     </div>
 
     <!-- Main Note View Card -->
-    <article class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 sm:p-8 space-y-6">
+    <article class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden relative">
+        
+        <!-- Sticky Sub-Header Search Toolbar -->
+        <div class="sticky top-0 z-30 bg-indigo-50/95 backdrop-blur border-b border-indigo-100 p-2.5 sm:p-3 transition-all">
+            <div class="flex items-center justify-between gap-2 sm:gap-3">
+                
+                <!-- Search Input Field -->
+                <div class="relative flex-1 min-w-0">
+                    <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
+                        <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <input type="text" 
+                           x-model="searchQuery" 
+                           @input="performSearch" 
+                           @keydown.enter.prevent="nextMatch" 
+                           placeholder="Search in note..." 
+                           class="w-full bg-white border border-indigo-200 rounded-lg pl-8 pr-14 py-1.5 text-xs sm:text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent">
+                    
+                    <!-- Clear Button -->
+                    <button type="button" 
+                            x-show="searchQuery.length > 0" 
+                            @click="clearSearch" 
+                            class="absolute inset-y-0 right-1 my-auto h-6 px-1.5 text-[10px] font-semibold text-gray-500 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded transition flex items-center">
+                        Clear
+                    </button>
+                </div>
 
-        <!-- Header Information -->
-        <header class="space-y-3 pb-6 border-b border-gray-100">
-            <div class="flex items-center space-x-3">
-                {% if note.category %}
-                    <span class="text-xs font-semibold px-3 py-1 rounded-full text-white" style="background-color: {{ note.category.color }}">
-                        {{ note.category.name }}
+                <!-- Match Indicators & Stepper -->
+                <div class="flex items-center space-x-1.5 sm:space-x-2 shrink-0" x-show="searchQuery.trim().length > 0">
+                    <span class="text-indigo-900 font-semibold bg-indigo-100 px-2 py-1 rounded-md text-[11px] sm:text-xs whitespace-nowrap">
+                        <span x-text="matchCount > 0 ? currentIndex + 1 : 0"></span>/<span x-text="matchCount"></span>
                     </span>
-                {% else %}
-                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-500">
-                        Uncategorized
-                    </span>
-                {% endif %}
-                <span class="text-xs font-semibold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md">
-                    Service Date: {{ note.service_date|date:"F j, Y" }}
-                </span>
+                    <div class="flex space-x-1">
+                        <button type="button" @click="prevMatch" :disabled="matchCount === 0" class="p-1.5 bg-white border border-indigo-200 rounded-md hover:bg-indigo-100 disabled:opacity-40 text-indigo-700 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path>
+                            </svg>
+                        </button>
+                        <button type="button" @click="nextMatch" :disabled="matchCount === 0" class="p-1.5 bg-white border border-indigo-200 rounded-md hover:bg-indigo-100 disabled:opacity-40 text-indigo-700 transition">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
             </div>
-
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
-                {{ note.title }}
-            </h1>
-
-            <div class="flex flex-wrap items-center gap-4 text-xs text-gray-400">
-                <span class="flex items-center space-x-1">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                    </svg>
-                    <span>Saved: {{ note.created_at|date:"F j, Y, g:i a" }}</span>
-                </span>
-                <span>•</span>
-                <span class="flex items-center space-x-1">
-                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                    </svg>
-                    <span>Modified: {{ note.updated_at|date:"F j, Y, g:i a" }}</span>
-                </span>
-            </div>
-        </header>
-
-        <!-- Body Content -->
-        <div class="text-gray-800 leading-relaxed whitespace-pre-wrap text-base">
-            {{ note.content }}
         </div>
 
-        <!-- Attached Media & Files -->
-        {% if note.attachments.all %}
-            <section class="pt-6 border-t border-gray-100 space-y-4">
-                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
-                    Attachments ({{ note.attachments.count }})
-                </h3>
-
-                <!-- Images Gallery Grid -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {% for item in note.attachments.all %}
-                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 overflow-hidden flex flex-col justify-between">
-                            {% if item.is_image %}
-                                <a href="{{ item.file.url }}" target="_blank" class="block overflow-hidden rounded mb-2 group">
-                                    <img src="{{ item.file.url }}" alt="Attachment Image" class="w-full h-40 object-cover rounded transform group-hover:scale-105 transition duration-200">
-                                </a>
-                            {% else %}
-                                <div class="h-40 flex flex-col items-center justify-center bg-gray-100 rounded mb-2 text-gray-400">
-                                    <svg class="w-10 h-10 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                                    </svg>
-                                    <span class="text-xs uppercase font-semibold">Document</span>
-                                </div>
-                            {% endif %}
-
-                            <a href="{{ item.file.url }}" download class="text-xs text-indigo-600 hover:text-indigo-800 font-medium truncate block pt-1 px-1">
-                                📥 Download File
-                            </a>
-                        </div>
-                    {% endfor %}
+        <div class="p-4 sm:p-8 space-y-6">
+            <!-- Header Information -->
+            <header class="space-y-3 pb-6 border-b border-gray-100">
+                <div class="flex flex-wrap items-center gap-2">
+                    {% if note.category %}
+                        <span class="text-xs font-semibold px-3 py-1 rounded-full text-white" style="background-color: {{ note.category.color }}">
+                            {{ note.category.name }}
+                        </span>
+                    {% else %}
+                        <span class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-500">
+                            Uncategorized
+                        </span>
+                    {% endif %}
+                    <span class="text-xs font-semibold text-indigo-700 bg-indigo-50 px-3 py-1 rounded-md">
+                        Service Date: {{ note.service_date|date:"F j, Y" }}
+                    </span>
                 </div>
-            </section>
-        {% endif %}
 
+                <h1 class="text-xl sm:text-3xl font-bold text-gray-900 leading-tight">
+                    {{ note.title }}
+                </h1>
+
+                <div class="flex flex-wrap items-center gap-3 text-xs text-gray-400">
+                    <span class="flex items-center space-x-1">
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                        </svg>
+                        <span>Saved: {{ note.created_at|date:"M j, Y" }}</span>
+                    </span>
+                    <span>•</span>
+                    <span class="flex items-center space-x-1">
+                        <svg class="w-3.5 h-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Modified: {{ note.updated_at|date:"M j, Y" }}</span>
+                    </span>
+                </div>
+            </header>
+
+            <!-- Raw Hidden Content for Alpine.js Reference -->
+            <div id="original-content" class="hidden">{{ note.content }}</div>
+
+            <!-- Body Content Container -->
+            <div id="highlight-container" class="text-gray-800 leading-relaxed whitespace-pre-wrap text-sm sm:text-base" x-html="highlightedContent">
+                {{ note.content }}
+            </div>
+
+            <!-- Attachments Section -->
+            {% if note.attachments.all %}
+                <section class="pt-6 border-t border-gray-100 space-y-4">
+                    <h3 class="text-xs sm:text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                        Attachments ({{ note.attachments.count }})
+                    </h3>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {% for item in note.attachments.all %}
+                            <div class="bg-gray-50 border border-gray-200 rounded-lg p-2.5 flex flex-col justify-between shadow-sm">
+                                {% if item.is_image %}
+                                    <button type="button" 
+                                            @click="openLightboxByUrl('{{ item.file.url }}')" 
+                                            class="block overflow-hidden rounded mb-2 group relative w-full text-left">
+                                        <img src="{{ item.file.url }}" alt="{{ item.caption|default:item.file_name }}" class="w-full h-36 sm:h-40 object-cover rounded transform group-hover:scale-105 transition duration-200">
+                                        <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white text-xs font-medium">
+                                            <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v6m-3-3h6"></path>
+                                            </svg>
+                                            View Image
+                                        </div>
+                                    </button>
+                                {% else %}
+                                    <a href="{{ item.file.url }}" target="_blank" class="h-36 sm:h-40 flex flex-col items-center justify-center bg-gray-100 rounded mb-2 text-gray-400 hover:bg-gray-200/80 transition">
+                                        <svg class="w-8 h-8 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                        </svg>
+                                        <span class="text-[10px] uppercase font-semibold text-gray-500">{{ item.extension }}</span>
+                                    </a>
+                                {% endif %}
+
+                                <!-- Caption Text / Fallback File Name -->
+                                <div class="px-1 pt-1">
+                                    <p class="text-xs font-medium text-gray-700 truncate" title="{{ item.caption|default:item.file_name }}">
+                                        {% if item.caption %}
+                                            💬 {{ item.caption }}
+                                        {% else %}
+                                            📄 {{ item.file_name }}
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endif %}
+        </div>
     </article>
+
+    <!-- Modal Lightbox Image Slider -->
+    <div x-show="lightboxOpen" 
+         x-cloak 
+         @keydown.window.escape="lightboxOpen = false"
+         @keydown.window.left="prevImage"
+         @keydown.window.right="nextImage"
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 sm:p-6 backdrop-blur-sm transition-opacity">
+        
+        <!-- Close Button -->
+        <button type="button" 
+                @click="lightboxOpen = false" 
+                class="absolute top-4 right-4 z-10 p-2 text-white/80 hover:text-white bg-black/40 hover:bg-black/70 rounded-full transition">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+
+        <!-- Slider Navigation Controls -->
+        <template x-if="images.length > 1">
+            <div>
+                <button type="button" 
+                        @click="prevImage" 
+                        class="absolute left-3 sm:left-6 top-1/2 -translate-y-1/2 z-10 p-2.5 text-white bg-black/50 hover:bg-black/80 rounded-full transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                </button>
+                <button type="button" 
+                        @click="nextImage" 
+                        class="absolute right-3 sm:right-6 top-1/2 -translate-y-1/2 z-10 p-2.5 text-white bg-black/50 hover:bg-black/80 rounded-full transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </button>
+            </div>
+        </template>
+
+        <!-- Main Slider Content Container -->
+        <div class="max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center space-y-3" @click.away="lightboxOpen = false">
+            <div class="relative max-h-[75vh] overflow-hidden flex items-center justify-center">
+                <img :src="currentImage.url" 
+                     :alt="currentImage.caption" 
+                     class="max-h-[75vh] max-w-full object-contain rounded-lg shadow-2xl">
+            </div>
+
+            <!-- Slide Counter & Caption Toolbar -->
+            <div class="text-center space-y-1 bg-black/60 px-4 py-2 rounded-lg max-w-xl w-full">
+                <template x-if="images.length > 1">
+                    <p class="text-[11px] font-semibold text-indigo-300 uppercase tracking-wider">
+                        Image <span x-text="activeImageIndex + 1"></span> of <span x-text="images.length"></span>
+                    </p>
+                </template>
+
+                <p class="text-sm font-medium text-white truncate" x-text="currentImage.caption || currentImage.fileName"></p>
+            </div>
+        </div>
+    </div>
 </div>
+
+<!-- Alpine.js Combined Component Logic -->
+<script>
+    document.addEventListener('alpine:init', () => {
+        Alpine.data('noteDetailView', () => ({
+            // In-note search states
+            searchQuery: new URLSearchParams(window.location.search).get('q') || '',
+            originalText: '',
+            highlightedContent: '',
+            matchCount: 0,
+            currentIndex: 0,
+
+            // Lightbox / Image Slider states
+            lightboxOpen: false,
+            activeImageIndex: 0,
+            images: [
+                {% for item in note.attachments.all %}
+                    {% if item.is_image %}
+                        {
+                            url: "{{ item.file.url }}",
+                            caption: "{{ item.caption|default:''|escapejs }}",
+                            fileName: "{{ item.file_name|escapejs }}"
+                        },
+                    {% endif %}
+                {% endfor %}
+            ],
+
+            init() {
+                const rawElem = document.getElementById('original-content');
+                if (rawElem) {
+                    this.originalText = rawElem.textContent;
+                    this.highlightedContent = this.escapeHtml(this.originalText);
+                }
+                
+                if (this.searchQuery) {
+                    this.performSearch();
+                }
+            },
+
+            // Lightbox Methods
+            openLightboxByUrl(url) {
+                const foundIndex = this.images.findIndex(img => img.url === url);
+                if (foundIndex !== -1) {
+                    this.activeImageIndex = foundIndex;
+                    this.lightboxOpen = true;
+                }
+            },
+
+            get currentImage() {
+                return this.images[this.activeImageIndex] || {};
+            },
+
+            nextImage() {
+                if (this.images.length === 0) return;
+                this.activeImageIndex = (this.activeImageIndex + 1) % this.images.length;
+            },
+
+            prevImage() {
+                if (this.images.length === 0) return;
+                this.activeImageIndex = (this.activeImageIndex - 1 + this.images.length) % this.images.length;
+            },
+
+            // In-note Search Methods
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            },
+
+            performSearch() {
+                const query = this.searchQuery.trim();
+                if (!query) {
+                    this.clearSearch();
+                    return;
+                }
+
+                const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const regex = new RegExp(`(${escapedQuery})`, 'gi');
+                
+                this.matchCount = 0;
+                this.currentIndex = 0;
+
+                this.highlightedContent = this.escapeHtml(this.originalText).replace(regex, (match) => {
+                    const id = `match-${this.matchCount}`;
+                    this.matchCount++;
+                    return `<mark id="${id}" class="in-note-match bg-amber-200 text-amber-900 px-0.5 rounded transition-colors duration-200">${match}</mark>`;
+                });
+
+                this.$nextTick(() => {
+                    this.updateActiveHighlight();
+                });
+            },
+
+            clearSearch() {
+                this.searchQuery = '';
+                this.highlightedContent = this.escapeHtml(this.originalText);
+                this.matchCount = 0;
+                this.currentIndex = 0;
+            },
+
+            nextMatch() {
+                if (this.matchCount === 0) return;
+                this.currentIndex = (this.currentIndex + 1) % this.matchCount;
+                this.updateActiveHighlight();
+            },
+
+            prevMatch() {
+                if (this.matchCount === 0) return;
+                this.currentIndex = (this.currentIndex - 1 + this.matchCount) % this.matchCount;
+                this.updateActiveHighlight();
+            },
+
+            updateActiveHighlight() {
+                if (this.matchCount === 0) return;
+
+                document.querySelectorAll('.in-note-match').forEach(el => {
+                    el.classList.remove('bg-indigo-600', 'text-white', 'shadow-sm', 'ring-2', 'ring-indigo-300');
+                    el.classList.add('bg-amber-200', 'text-amber-900');
+                });
+
+                const activeMatch = document.getElementById(`match-${this.currentIndex}`);
+                if (activeMatch) {
+                    activeMatch.classList.remove('bg-amber-200', 'text-amber-900');
+                    activeMatch.classList.add('bg-indigo-600', 'text-white', 'shadow-sm', 'ring-2', 'ring-indigo-300');
+                    
+                    const y = activeMatch.getBoundingClientRect().top + window.scrollY - 100;
+                    window.scrollTo({ top: y, behavior: 'smooth' });
+                }
+            }
+        }));
+    });
+</script>
 {% endblock %}

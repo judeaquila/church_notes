@@ -2,8 +2,9 @@
 {% load note_tags %}
 
 {% block content %}
-<div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-6" x-data="{ previewNote: null, showPreview: false }">
 
+    <!-- Sidebar -->
     <aside class="space-y-2">
         <div class="flex items-center justify-between px-3 mb-2">
             <h3 class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Categories</h3>
@@ -15,7 +16,6 @@
         <a href="{% url 'note_list' %}?category=none" class="block px-3 py-2 rounded-lg font-medium {% if selected_category == 'none' %}bg-indigo-50 text-indigo-700{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
             Uncategorized
         </a>
-        
         <div class="pt-4 border-t border-gray-200 space-y-1">
             {% for cat in categories %}
                 <a href="{% url 'note_list' %}?category={{ cat.id }}" class="flex items-center justify-between px-3 py-2 rounded-lg text-gray-700 hover:bg-gray-100 transition">
@@ -29,61 +29,124 @@
         </div>
     </aside>
 
+    <!-- Main Content Area -->
     <section class="lg:col-span-3">
+        
         {% if query %}
-            <div class="mb-4 text-sm text-gray-600">
-                Matches highlighted for: <span class="font-semibold text-gray-900">"{{ query }}"</span>
+            <div class="mb-6 pb-4 border-b border-gray-200 flex items-center justify-between">
+                <div class="text-sm text-gray-600">
+                    Found <span class="font-bold text-gray-900">{{ search_results|length }}</span> notes containing: <span class="font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded">"{{ query }}"</span>
+                </div>
+                <a href="{% url 'note_list' %}" class="text-xs text-gray-500 hover:text-gray-900 bg-gray-100 px-3 py-1.5 rounded-md transition">Clear Search</a>
             </div>
-        {% endif %}
 
-        {% if notes %}
+            <!-- Global Search Results List -->
+            <div class="space-y-6">
+                {% for result in search_results %}
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm hover:border-indigo-300 transition">
+                        
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-lg font-bold text-gray-900">
+                                {% if result.title_match %}
+                                    {{ result.note.title|highlight:query }}
+                                {% else %}
+                                    {{ result.note.title }}
+                                {% endif %}
+                            </h2>
+                            <div class="flex space-x-2">
+                                <!-- Preview Button -->
+                                <button type="button" 
+                                        @click="previewNote = { title: '{{ result.note.title|escapejs }}', content: `{{ result.note.content|escapejs }}` }; showPreview = true;" 
+                                        class="px-3 py-1 bg-gray-50 hover:bg-gray-100 text-gray-600 text-xs font-medium rounded border border-gray-200 transition">
+                                    Preview
+                                </button>
+                                <!-- Open Note Link -->
+                                <a href="{% url 'note_detail' result.note.pk %}?q={{ query|urlencode }}" class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-medium rounded border border-indigo-100 transition flex items-center">
+                                    Open Note &rarr;
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="text-xs text-gray-400 mb-4 flex items-center space-x-3">
+                            <span>Service: {{ result.note.service_date|date:"M j, Y" }}</span>
+                            {% if result.note.category %}
+                                <span class="px-2 py-0.5 rounded-full text-white" style="background-color: {{ result.note.category.color }}">{{ result.note.category.name }}</span>
+                            {% endif %}
+                        </div>
+
+                        <!-- Extracted Context Snippets -->
+                        {% if result.snippets %}
+                            <div class="bg-gray-50 rounded-lg p-4 space-y-3 border-l-4 border-amber-300">
+                                {% for snippet in result.snippets %}
+                                    <div class="text-sm text-gray-700 flex items-start">
+                                        <span class="text-gray-400 mr-2 mt-0.5">↳</span>
+                                        <p>... {{ snippet.highlighted }} ...</p>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-sm text-gray-500 italic bg-gray-50 p-3 rounded">
+                                (Match found only in title)
+                            </div>
+                        {% endif %}
+                    </div>
+                {% empty %}
+                    <div class="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                        <p class="text-gray-500 font-medium">No results found for "{{ query }}".</p>
+                    </div>
+                {% endfor %}
+            </div>
+
+        {% else %}
+            <!-- Standard Note List Layout -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {% for note in notes %}
                     <a href="{% url 'note_detail' note.pk %}" class="block bg-white p-5 rounded-xl border border-gray-200 hover:shadow-md transition space-y-3">
                         <div class="flex items-center justify-between">
                             {% if note.category %}
-                                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full text-white" style="background-color: {{ note.category.color }}">
-                                    {{ note.category.name }}
-                                </span>
+                                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full text-white" style="background-color: {{ note.category.color }}">{{ note.category.name }}</span>
                             {% else %}
-                                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                                    Uncategorized
-                                </span>
+                                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-500">Uncategorized</span>
                             {% endif %}
-                            
-                            <!-- Service Date Badge -->
                             <span class="text-xs font-medium text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
                                 📅 {{ note.service_date|date:"M j, Y" }}
                             </span>
                         </div>
-
-                        <!-- Title with Highlight -->
-                        <h2 class="text-lg font-bold text-gray-900 truncate">
-                            {{ note.title|highlight:query }}
-                        </h2>
-
-                        <!-- Content Preview with Highlight -->
-                        <p class="text-gray-600 text-sm line-clamp-3 leading-relaxed">
-                            {{ note.content|highlight:query }}
-                        </p>
-
+                        <h2 class="text-lg font-bold text-gray-900 truncate">{{ note.title }}</h2>
+                        <p class="text-gray-600 text-sm line-clamp-3 leading-relaxed">{{ note.content }}</p>
                         <div class="text-xs text-gray-400 flex justify-between items-center pt-2 border-t border-gray-100">
                             <span>Saved: {{ note.created_at|date:"M d, Y" }}</span>
                             {% if note.attachments.exists %}
-                                <span class="flex items-center space-x-1 text-indigo-500">
-                                    📎 <span>{{ note.attachments.count }}</span>
-                                </span>
+                                <span class="text-indigo-500">📎 {{ note.attachments.count }}</span>
                             {% endif %}
                         </div>
                     </a>
+                {% empty %}
+                    <div class="col-span-2 text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
+                        <p class="text-gray-500 font-medium">No notes found.</p>
+                    </div>
                 {% endfor %}
-            </div>
-        {% else %}
-            <div class="text-center py-12 bg-white rounded-xl border border-dashed border-gray-300">
-                <p class="text-gray-500 font-medium">No notes found.</p>
             </div>
         {% endif %}
     </section>
+
+    <!-- Alpine.js Full Note Preview Modal -->
+    <div x-show="showPreview" 
+         x-transition.opacity 
+         class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+         style="display: none;">
+        <div @click.away="showPreview = false" class="bg-white rounded-xl max-w-2xl w-full h-[80vh] flex flex-col shadow-xl">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-xl">
+                <h3 class="text-lg font-bold text-gray-900 truncate pr-4" x-text="previewNote?.title"></h3>
+                <button @click="showPreview = false" class="text-gray-400 hover:text-gray-700 p-1">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div class="p-6 overflow-y-auto flex-1 text-gray-800 whitespace-pre-wrap leading-relaxed" x-text="previewNote?.content"></div>
+        </div>
+    </div>
 
 </div>
 {% endblock %}
