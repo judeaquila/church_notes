@@ -1,0 +1,25 @@
+{
+  "name": "notes_app",
+  "version": "1.0.0",
+  "description": "A personal app for my church notes to have all notes in a central hub and to aid easy searching for particular portions of the notes",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/judeaquila/church_notes.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/judeaquila/church_notes/issues"
+  },
+  "homepage": "https://github.com/judeaquila/church_notes#readme",
+  "dependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3"
+  }
+}

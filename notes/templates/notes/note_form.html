@@ -1,0 +1,48 @@
+{% extends 'notes/base.html' %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white p-8 rounded-xl border border-gray-200 shadow-sm" x-data="{ fileList: [] }">
+    <h1 class="text-2xl font-bold mb-6 text-gray-900">
+        {% if note %}Edit Note{% else %}Create Note{% endif %}
+    </h1>
+
+    <form method="POST" enctype="multipart/form-data" class="space-y-5">
+        {% csrf_token %}
+        
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
+            <input type="text" name="title" value="{{ note.title|default:'' }}" required 
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Category (Optional)</label>
+            <select name="category" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                <option value="">-- No Category --</option>
+                {% for cat in categories %}
+                    <option value="{{ cat.id }}" {% if note and note.category and note.category.id == cat.id %}selected{% endif %}>
+                        {{ cat.name }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Content</label>
+            <textarea name="content" rows="10" required 
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed">{{ note.content|default:'' }}</textarea>
+        </div>
+
+        <!-- Attachment Drop/Upload Zone -->
+        <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Upload Media / Attachments</label>
+            <input type="file" name="attachments" multiple class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+        </div>
+
+        <div class="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+            <a href="{% url 'note_list' %}" class="px-5 py-2.5 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50">Cancel</a>
+            <button type="submit" class="px-5 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium">Save Note</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

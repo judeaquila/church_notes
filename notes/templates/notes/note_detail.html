@@ -1,0 +1,111 @@
+{% extends 'notes/base.html' %}
+
+{% block title %}{{ note.title }} - Notes Hub{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+
+    <!-- Top Navigation & Action Buttons -->
+    <div class="flex items-center justify-between">
+        <a href="{% url 'note_list' %}" class="inline-flex items-center space-x-1 text-sm font-medium text-gray-600 hover:text-gray-900 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+            <span>Back to Notes</span>
+        </a>
+
+        <div class="flex items-center space-x-3">
+            <a href="{% url 'note_edit' note.pk %}" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition flex items-center space-x-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                <span>Edit</span>
+            </a>
+            <a href="{% url 'note_delete' note.pk %}" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 text-sm font-medium rounded-lg transition flex items-center space-x-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                <span>Delete</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Note View Card -->
+    <article class="bg-white rounded-xl border border-gray-200 shadow-sm p-6 sm:p-8 space-y-6">
+
+        <!-- Header Information -->
+        <header class="space-y-3 pb-6 border-b border-gray-100">
+            <div class="flex items-center space-x-3">
+                {% if note.category %}
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full text-white" style="background-color: {{ note.category.color }}">
+                        {{ note.category.name }}
+                    </span>
+                {% else %}
+                    <span class="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-500">
+                        Uncategorized
+                    </span>
+                {% endif %}
+            </div>
+
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 leading-tight">
+                {{ note.title }}
+            </h1>
+
+            <div class="flex flex-wrap items-center gap-4 text-xs text-gray-400">
+                <span class="flex items-center space-x-1">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    <span>Saved: {{ note.created_at|date:"F j, Y, g:i a" }}</span>
+                </span>
+                <span>•</span>
+                <span class="flex items-center space-x-1">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>Modified: {{ note.updated_at|date:"F j, Y, g:i a" }}</span>
+                </span>
+            </div>
+        </header>
+
+        <!-- Body Content -->
+        <div class="text-gray-800 leading-relaxed whitespace-pre-wrap text-base">
+            {{ note.content }}
+        </div>
+
+        <!-- Attached Media & Files -->
+        {% if note.attachments.all %}
+            <section class="pt-6 border-t border-gray-100 space-y-4">
+                <h3 class="text-sm font-semibold text-gray-700 uppercase tracking-wider">
+                    Attachments ({{ note.attachments.count }})
+                </h3>
+
+                <!-- Images Gallery Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {% for item in note.attachments.all %}
+                        <div class="bg-gray-50 border border-gray-200 rounded-lg p-2 overflow-hidden flex flex-col justify-between">
+                            {% if item.is_image %}
+                                <a href="{{ item.file.url }}" target="_blank" class="block overflow-hidden rounded mb-2 group">
+                                    <img src="{{ item.file.url }}" alt="Attachment Image" class="w-full h-40 object-cover rounded transform group-hover:scale-105 transition duration-200">
+                                </a>
+                            {% else %}
+                                <div class="h-40 flex flex-col items-center justify-center bg-gray-100 rounded mb-2 text-gray-400">
+                                    <svg class="w-10 h-10 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                    </svg>
+                                    <span class="text-xs uppercase font-semibold">Document</span>
+                                </div>
+                            {% endif %}
+
+                            <a href="{{ item.file.url }}" download class="text-xs text-indigo-600 hover:text-indigo-800 font-medium truncate block pt-1 px-1">
+                                📥 Download File
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
+    </article>
+</div>
+{% endblock %}
