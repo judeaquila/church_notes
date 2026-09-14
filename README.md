@@ -37,5 +37,5 @@ Ensure you have the following installed locally:
 
 1. **Clone the Repository**
    ```bash
-   git clone [https://github.com/judeaquila/church_notes](https://github.com/judeaquila/church_notes)
+   git clone https://github.com/judeaquila/church_notes
    cd notes-hub
