@@ -1,5 +1,5 @@
-# notes/models.py
 from django.db import models
+from django.utils import timezone
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -22,6 +22,7 @@ class Note(models.Model):
         blank=True, 
         related_name='notes'
     )
+    service_date = models.DateField(default=timezone.now, help_text="Date of the service/event")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -9,7 +9,7 @@ def note_list(request):
     query = request.GET.get('q', '').strip()
     category_id = request.GET.get('category', '')
     
-    notes = Note.objects.all().order_by('-updated_at')
+    notes = Note.objects.all().order_by('-service_date')
 
     if query:
         notes = notes.filter(
@@ -40,9 +40,16 @@ def note_create(request):
         title = request.POST.get('title')
         content = request.POST.get('content')
         category_id = request.POST.get('category')
+        service_date = request.POST.get('service_date')
         
         category = Category.objects.get(id=category_id) if category_id else None
-        note = Note.objects.create(title=title, content=content, category=category)
+        
+        note = Note.objects.create(
+            title=title, 
+            content=content, 
+            category=category,
+            service_date=service_date
+        )
 
         files = request.FILES.getlist('attachments')
         for f in files:
@@ -59,6 +66,8 @@ def note_edit(request, pk):
         note.title = request.POST.get('title')
         note.content = request.POST.get('content')
         category_id = request.POST.get('category')
+        note.service_date = request.POST.get('service_date')
+        
         note.category = Category.objects.get(id=category_id) if category_id else None
         note.save()
 
